@@ -8,16 +8,19 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
+
   TextEditingController _tituloController = TextEditingController();
   TextEditingController _descricaoController = TextEditingController();
   var _db = AnotacaoHelper();
+  List<Anotacao> _anotacoes = new List<Anotacao>();
 
-  _exibirTelaCadastro() {
+  _exibirTelaCadastro(){
+
     showDialog(
         context: context,
-        builder: (context) {
+        builder: (context){
           return AlertDialog(
-            title: Text("Adicionar anotacaçao"),
+            title: Text("Adicionar anotação"),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
@@ -25,36 +28,75 @@ class _HomeState extends State<Home> {
                   controller: _tituloController,
                   autofocus: true,
                   decoration: InputDecoration(
-                      labelText: "Titulo", hintText: "Digite titulo..."),
+                      labelText: "Título",
+                      hintText: "Digite título..."
+                  ),
                 ),
                 TextField(
                   controller: _descricaoController,
                   decoration: InputDecoration(
-                      labelText: "Descricao", hintText: "Digite descrição..."),
+                      labelText: "Descrição",
+                      hintText: "Digite descrição..."
+                  ),
                 )
               ],
             ),
             actions: <Widget>[
               FlatButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text("Cancelar")),
+                  child: Text("Cancelar")
+              ),
               FlatButton(
-                  onPressed: () {
+                  onPressed: (){
+
+                    //salvar
                     _salvarAnotacao();
+
+                    Navigator.pop(context);
                   },
-                  child: Text("Salvar"))
+                  child: Text("Salvar")
+              )
             ],
           );
-        });
+        }
+    );
+
+  }
+
+  _recuperarAnotacao() async{
+    List anotacoesRecuperadas = await _db.recuperarAnotacao();
+    List<Anotacao> listaTemporaria = new List<Anotacao>();
+
+    for(var item in anotacoesRecuperadas){
+      Anotacao anotacao = Anotacao.fromMap(item);
+      listaTemporaria.add(anotacao);
+    }
+    setState(() {
+      _anotacoes = listaTemporaria;
+    });
+    listaTemporaria = null;
   }
 
   _salvarAnotacao() async {
+
     String titulo = _tituloController.text;
     String descricao = _descricaoController.text;
 
-    Anotacao anotacao = Anotacao(titulo, descricao, DateTime.now().toString());
-    int resultado = await _db.salvarAnotacao(anotacao);
-    print(resultado.toString());
+    //print("data atual: " + DateTime.now().toString() );
+    Anotacao anotacao = Anotacao(titulo, descricao, DateTime.now().toString() );
+    int resultado = await _db.salvarAnotacao( anotacao );
+    print("salvar anotacao: " + resultado.toString() );
+
+    _descricaoController.clear();
+    _tituloController.clear();
+
+    _recuperarAnotacao();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _recuperarAnotacao();
   }
 
   @override
@@ -64,15 +106,32 @@ class _HomeState extends State<Home> {
         title: Text("Minhas anotações"),
         backgroundColor: Colors.lightGreen,
       ),
-      body: Container(),
+      body: Column(
+        children: <Widget>[
+          Expanded(
+              child: ListView.builder(
+                itemCount: _anotacoes.length,
+                  itemBuilder: (context, index){
+                  final item = _anotacoes[index];
+                    return Card(
+                      child: ListTile(
+                        title: Text(item.titulo),
+                        subtitle: Text("${item.data} ${item.descricao}"),
+                      ),
+                    );
+                  }
+              )
+          )
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
           backgroundColor: Colors.green,
           foregroundColor: Colors.white,
-          mini: true,
           child: Icon(Icons.add),
-          onPressed: () {
+          onPressed: (){
             _exibirTelaCadastro();
-          }),
+          }
+      ),
     );
   }
 }

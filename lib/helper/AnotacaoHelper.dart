@@ -17,37 +17,85 @@ class AnotacaoHelper {
     if (_db != null) {
       return _db;
     } else {
-      _db = await inicializarBD();
+      _db = await inicializarDB();
       return _db;
     }
   }
 
   _onCreate(Database db, int version) async {
-    String sql =
-        "CREATE TABLE ${nomeTabela} ("
+    /*
+
+    id titulo descricao data
+    01 teste  teste     02/10/2020
+
+    * */
+
+    String sql = "CREATE TABLE $nomeTabela ("
         "id INTEGER PRIMARY KEY AUTOINCREMENT, "
         "titulo VARCHAR, "
         "descricao TEXT, "
-        "data DATETIME"
-        ")";
+        "data DATETIME)";
     await db.execute(sql);
   }
 
-  inicializarBD() async {
+  inicializarDB() async {
     final caminhoBancoDados = await getDatabasesPath();
     final localBancoDados =
-    join(caminhoBancoDados, "banco_minhas_anotacoes.db");
+        join(caminhoBancoDados, "banco_minhas_anotacoes.db");
 
     var db =
-    await openDatabase(localBancoDados, version: 1, onCreate: _onCreate);
+        await openDatabase(localBancoDados, version: 1, onCreate: _onCreate);
     return db;
   }
 
-  Future<int> salvarAnotacao(Anotacao anotacao) async{
+  Future<int> salvarAnotacao(Anotacao anotacao) async {
     var bancoDados = await db;
+    int resultado = await bancoDados.insert(nomeTabela, anotacao.toMap());
+    return resultado;
+  }
 
-    int id = await bancoDados.insert(nomeTabela, anotacao.toMap() );
-    return id;
+  recuperarAnotacao() async {
+    var bancoDados = await db;
+    String sql = "SELECT * FROM ${nomeTabela} ORDER BY data DESC";
+    List anotacaos = await bancoDados.rawQuery(sql);
+    return anotacaos;
+  }
+}
+
+/*
+
+class Normal {
+
+  Normal(){
+
   }
 
 }
+
+class Singleton {
+
+  static final Singleton _singleton = Singleton._internal();
+
+  	factory Singleton(){
+      print("Singleton");
+      return _singleton;
+    }
+
+    Singleton._internal(){
+    	print("_internal");
+  	}
+
+}
+
+void main() {
+
+  var i1 = Singleton();
+  print("***");
+  var i2 = Singleton();
+
+  print( i1 == i2 );
+
+}
+
+
+* */
