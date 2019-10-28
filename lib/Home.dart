@@ -14,15 +14,26 @@ class _HomeState extends State<Home> {
   TextEditingController _tituloController = TextEditingController();
   TextEditingController _descricaoController = TextEditingController();
   var _db = AnotacaoHelper();
-  List<Anotacao> _anotacoes = new List<Anotacao>();
+  List<Anotacao> _anotacoes = List<Anotacao>();
 
-  _exibirTelaCadastro(){
+  _exibirTelaCadastro( {Anotacao anotacao} ){
+
+    String textoSalvarAtualizar = "";
+    if( anotacao == null ){//salvando
+      _tituloController.text = "";
+      _descricaoController.text = "";
+      textoSalvarAtualizar = "Salvar";
+    }else{//atualizar
+      _tituloController.text = anotacao.titulo;
+      _descricaoController.text = anotacao.descricao;
+      textoSalvarAtualizar = "Atualizar";
+    }
 
     showDialog(
         context: context,
         builder: (context){
           return AlertDialog(
-            title: Text("Adicionar anotação"),
+            title: Text("$textoSalvarAtualizar anotação"),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
@@ -52,11 +63,11 @@ class _HomeState extends State<Home> {
                   onPressed: (){
 
                     //salvar
-                    _salvarAnotacao();
+                    _salvarAtualizarAnotacao(anotacaoSelecionada: anotacao);
 
                     Navigator.pop(context);
                   },
-                  child: Text("Salvar")
+                  child: Text(textoSalvarAtualizar)
               )
             ],
           );
@@ -65,48 +76,70 @@ class _HomeState extends State<Home> {
 
   }
 
-  _recuperarAnotacao() async{
-    List anotacoesRecuperadas = await _db.recuperarAnotacao();
-    List<Anotacao> listaTemporaria = new List<Anotacao>();
+  _recuperarAnotacoes() async {
 
-    for(var item in anotacoesRecuperadas){
-      Anotacao anotacao = Anotacao.fromMap(item);
-      listaTemporaria.add(anotacao);
+    List anotacoesRecuperadas = await _db.recuperarAnotacao();
+
+    List<Anotacao> listaTemporaria = List<Anotacao>();
+    for( var item in anotacoesRecuperadas ){
+
+      Anotacao anotacao = Anotacao.fromMap( item );
+      listaTemporaria.add( anotacao );
+
     }
+
     setState(() {
       _anotacoes = listaTemporaria;
     });
     listaTemporaria = null;
+
+    //print("Lista anotacoes: " + anotacoesRecuperadas.toString() );
+
   }
 
-  _salvarAnotacao() async {
+  _salvarAtualizarAnotacao( {Anotacao anotacaoSelecionada} ) async {
 
     String titulo = _tituloController.text;
     String descricao = _descricaoController.text;
 
-    //print("data atual: " + DateTime.now().toString() );
-    Anotacao anotacao = Anotacao(titulo, descricao, DateTime.now().toString() );
-    int resultado = await _db.salvarAnotacao( anotacao );
-    print("salvar anotacao: " + resultado.toString() );
+    if( anotacaoSelecionada == null ){//salvar
+      Anotacao anotacao = Anotacao(titulo, descricao, DateTime.now().toString() );
+      int resultado = await _db.salvarAnotacao( anotacao );
+    }else{//atualizar
+      anotacaoSelecionada.titulo    = titulo;
+      anotacaoSelecionada.descricao = descricao;
+      anotacaoSelecionada.data      = DateTime.now().toString();
+      int resultado = await _db.atualizarAnotacao( anotacaoSelecionada );
+    }
 
-    _descricaoController.clear();
     _tituloController.clear();
+    _descricaoController.clear();
 
-    _recuperarAnotacao();
+    _recuperarAnotacoes();
+
   }
 
-  _formatarData(String  data){
+  _formatarData(String data){
+
     initializeDateFormatting("pt_BR");
-    var formatador = DateFormat("y/M/d H:m:s");
-    DateTime dataConvertida = DateTime.parse(data);
-    String dataFormatada = formatador.format(dataConvertida);
+
+    //Year -> y month-> M Day -> d
+    // Hour -> H minute -> m second -> s
+    //var formatador = DateFormat("d/MMMM/y H:m:s");
+    var formatador = DateFormat.yMd("pt_BR");
+
+    DateTime dataConvertida = DateTime.parse( data );
+    String dataFormatada = formatador.format( dataConvertida );
+
     return dataFormatada;
+
+
   }
 
   @override
   void initState() {
     super.initState();
-    _recuperarAnotacao();
+    _recuperarAnotacoes();
   }
 
   @override
@@ -120,15 +153,47 @@ class _HomeState extends State<Home> {
         children: <Widget>[
           Expanded(
               child: ListView.builder(
-                itemCount: _anotacoes.length,
+                  itemCount: _anotacoes.length,
                   itemBuilder: (context, index){
-                  final item = _anotacoes[index];
+
+                    final anotacao = _anotacoes[index];
+
                     return Card(
                       child: ListTile(
-                        title: Text(item.titulo),
-                        subtitle: Text("${_formatarData(item.data)} ${item.descricao}"),
+                        title: Text( anotacao.titulo ),
+                        subtitle: Text("${_formatarData(anotacao.data)} - ${anotacao.descricao}") ,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: <Widget>[
+                            GestureDetector(
+                              onTap: (){
+                                _exibirTelaCadastro(anotacao: anotacao);
+                              },
+                              child: Padding(
+                                padding: EdgeInsets.only(right: 16),
+                                child: Icon(
+                                  Icons.edit,
+                                  color: Colors.green,
+                                ),
+                              ),
+                            ),
+                            GestureDetector(
+                              onTap: (){
+
+                              },
+                              child: Padding(
+                                padding: EdgeInsets.only(right: 0),
+                                child: Icon(
+                                  Icons.remove_circle,
+                                  color: Colors.red,
+                                ),
+                              ),
+                            )
+                          ],
+                        ),
                       ),
                     );
+
                   }
               )
           )
